@@ -1,0 +1,9 @@
+# Bundle layer contributed by @visol-456/dsh-cost-tracker.
+#
+# Declared via package.json `dsh.bundle` so `dsh plugin add @visol-456/dsh-cost-tracker`
+# activates this plugin as a profile layer automatically. The plugin mounts with
+# default DeepSeek prices; edit them from Settings > 使用统计 (Usage) page or the
+# settings document.
+- insert:
+    - id: cost-tracker
+      name: '@visol-456/dsh-cost-tracker'

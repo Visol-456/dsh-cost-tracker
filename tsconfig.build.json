@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "outDir": "lib/types",
+    "rootDir": "src",
+    "rewriteRelativeImportExtensions": true,
+    "types": ["node"]
+  },
+  "exclude": ["src/client"]
+}
