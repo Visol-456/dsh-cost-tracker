@@ -318,18 +318,28 @@
 }
 
 /* Request log: auto column layout like CC Switch — cells size to their
-   content, so headers can never overlap; the min-width keeps the table
-   comfortable and the wrapper scrolls on narrow windows. The timestamp
-   column is narrow (MM/DD HH:mm), leaving room for provider/model and the
-   numeric columns. */
+   content, so headers can never overlap and no column is ever squeezed
+   below its text (overflow:hidden on every cell would let the browser
+   compress the rightmost Cost column into "Co"/"¥0.0…"). If the 8 columns
+   still exceed the container, the wrapper scrolls horizontally instead of
+   clipping. Compact padding + the MM/DD HH:mm timestamp keep the natural
+   width near 660px, so a ~700px container shows all 8 columns intact. */
 .logTable {
   min-width: 700px;
 }
 
-/* Keep long model names from blowing the layout: cap + ellipsis, full name
-   on hover via the title attribute (same pattern as CC Switch). */
+.table.logTable th,
+.table.logTable td {
+  padding: 6px 6px;
+}
+
+/* Keep long model names from blowing the layout: cap + ellipsis (the only
+   cell that truncates), full name on hover via the title attribute (same
+   pattern as CC Switch). */
 .logTable td:nth-child(3) {
   max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table th {
@@ -353,8 +363,9 @@
   padding: 7px 8px;
   border-bottom: 1px solid var(--dsw-alias-border-faint, #f1f2f4);
   color: var(--dsw-alias-label-primary, #1f2329);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* No overflow:hidden here: clipping cells lets auto layout compress a
+     column below its text width. nowrap keeps rows single-line; columns
+     that outgrow the container overflow into the scrollable wrapper. */
   white-space: nowrap;
 }
 
