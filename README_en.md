@@ -13,7 +13,8 @@ call, and shows three layers of UI in dsh web:
 - **B. Session summary**: an expandable card in the same band — session total cost,
   the three cost buckets (cache hit / cache miss / output), token counts, cache-hit
   rate, average first-token latency.
-- **C. Global stats page**: Settings → "Usage" — a CC-Switch-style Usage Statistics
+- **C. Global stats page**: the "Usage" tab at the top of the conversation page,
+  sibling to Chat/Trajectory — a CC-Switch-style Usage Statistics
   dashboard: hero metrics (real tokens / requests / total cost), detail cards
   (fresh input / output / cache creation / cache hit + cache-hit-rate progress
   bar), a dual-axis trend chart (cost / cache creation / cache hit / input / output,
@@ -56,7 +57,7 @@ Recording starts immediately with zero configuration. Default price table
 | others (default) | 0.02 | 1 | 2 |
 
 After the 8/17 peak/off-peak pricing takes effect, edit prices in
-Settings → Usage → Pricing (per-model peak prices and peak hours are supported),
+Conversation → Usage → Pricing (per-model peak prices and peak hours are supported),
 or write the `prices` key into the settings document / cordis.yml. **A malformed
 price table fails loud at load time** — it can never silently mis-bill.
 
@@ -145,12 +146,14 @@ npm test             # vitest: cost math, price validation, persistence,
   harness DeepSeek adapter already maps `prompt_cache_hit_tokens` into
   `cacheReadTokens` and subtracts it from `inputTokens` — see `mapUsage` in
   `packages/llm/llm-deepseek/src/translate.ts`).
-- Client: the "Usage" page registers on `settings.section`; the cost line and
-  session summary register on `conversation.composer.dock` (order 1, right below
-  the official stats line); data flows through the HTTP bridge, refreshed on new
-  messages and session switches.
-- Trend chart: a hand-rolled SVG dual-axis chart (the harness ships no chart
-  library, and recharts would bloat the plugin bundle).
+- Client: the "Usage" tab registers on `conversation.view` (order 2), sibling
+  to Chat/Trajectory; the cost line and session summary register on
+  `conversation.composer.dock` (order 1, right below the official stats line);
+  data flows through the HTTP bridge, refreshed on new messages and session
+  switches.
+- Trend chart: a hand-rolled SVG dual-axis smooth trend chart (Catmull-Rom to
+  cubic Bézier; the harness ships no chart library, and recharts would bloat
+  the plugin bundle).
 
 ## License
 

@@ -10,7 +10,7 @@ token 用量（输入 / 输出 / 缓存命中 / 缓存未命中）与价格表�
   平均秒数、缓存命中状态）之下多出一行 —— `费用 ¥0.0042 · 会话 ¥0.1234`，即本次调用费用；
 - **B. 会话级汇总**：同一统计带的「会话汇总」卡片 —— 会话总费用 + 缓存命中 / 未命中 /
   输出三类费用 + 各桶 token 数 + 缓存命中率 + 平均首 token 延迟；
-- **C. 全局统计页**：设置 → 「使用统计」页（布局参照 CC Switch 的 Usage Statistics）：
+- **C. 全局统计页**：会话页顶部「使用统计」tab（与「对话」「轨迹」平级，布局参照 CC Switch 的 Usage Statistics）：
   主指标卡（真实消耗 Tokens / 总请求数 / 总成本）+ 详细指标卡（新增输入 / 输出 /
   缓存创建 / 缓存命中 / 缓存命中率进度条）+ 双 Y 轴趋势折线图（成本 / 缓存创建 /
   缓存命中 / 输入 / 输出五条线，日期范围 + 30s 自动刷新）+ 来源 / 模型筛选 +
@@ -47,7 +47,7 @@ npm i @visol-456/dsh-cost-tracker
 | deepseek-v4-pro | 0.025 | 3 | 6 |
 | 其他模型（default） | 0.02 | 1 | 2 |
 
-8/17 峰谷定价后请到 **设置 → 使用统计 → 价格配置** 修改（支持按模型填峰谷价与高峰时段），
+8/17 峰谷定价后请到 **会话页 → 使用统计 → 价格配置** 修改（支持按模型填峰谷价与高峰时段），
 或直接改 settings 文档 / cordis.yml 的 `prices`。**错误的价格表会在加载时直接报错**
 （fail loud），绝不会静默错算。
 
@@ -127,10 +127,10 @@ npm test             # vitest：费用计算/价格校验/持久化/聚合/桥�
   provider 上报的 `TokenUsage`（harness 的 DeepSeek adapter 已把
   `prompt_cache_hit_tokens` 映射为 `cacheReadTokens` 并从 `inputTokens` 中减掉，
   见 `packages/llm/llm-deepseek/src/translate.ts` 的 `mapUsage`）。
-- 客户端：`settings.section` 注册「使用统计」页；`conversation.composer.dock`
-  （order 1，紧随官方 stats line）注册费用行与会话汇总卡片；数据经 HTTP 桥获取，
-  新消息/切会话自动刷新。
-- 趋势图：自绘 SVG 双 Y 轴折线图（harness 无图表库，recharts 会显著膨胀插件 bundle）。
+- 客户端：`conversation.view`（order 2）注册「使用统计」tab，与「对话」「轨迹」平级；
+  `conversation.composer.dock`（order 1，紧随官方 stats line）注册费用行与会话汇总卡片；
+  数据经 HTTP 桥获取，新消息/切会话自动刷新。
+- 趋势图：自绘 SVG 双 Y 轴平滑趋势图（Catmull-Rom 转 cubic Bézier，harness 无图表库，recharts 会显著膨胀插件 bundle）。
 
 ## License
 

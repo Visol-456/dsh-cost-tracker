@@ -52,6 +52,30 @@ function seriesValue(point: CostTrendPointWire, key: SeriesKey): number {
 }
 
 /**
+ * Build a smooth open Catmull-Rom spline path through the given 2D points.
+ * The curve is converted to cubic Bézier segments so every data point remains
+ * on the line and the result stays close to the underlying trend.
+ */
+function smoothPath(points: readonly { x: number; y: number }[]): string {
+  if (points.length === 0) return ''
+  if (points.length === 1) return `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`
+
+  let d = `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(i - 1, 0)]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[Math.min(i + 2, points.length - 1)]
+    const c1x = p1.x + (p2.x - p0.x) / 6
+    const c1y = p1.y + (p2.y - p0.y) / 6
+    const c2x = p2.x - (p3.x - p1.x) / 6
+    const c2y = p2.y - (p3.y - p1.y) / 6
+    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`
+  }
+  return d
+}
+
+/**
  * Dual-axis trend chart: left axis = tokens, right axis = cost. Points are
  * mapped to x by index (even spacing), y by value with per-axis scales.
  */
@@ -105,10 +129,11 @@ export function DualAxisTrendChart({ points, t }: ChartProps) {
   const hoveredX = hovered === null ? null : x(hovered)
 
   const seriesLine = (key: SeriesKey): string => {
-    return points.map((point, index) => {
-      const y = key === 'cost' ? yCost(point.totalCost) : yTokens(point[key])
-      return `${index === 0 ? 'M' : 'L'}${x(index).toFixed(1)},${y.toFixed(1)}`
-    }).join(' ')
+    const linePoints = points.map((point, index) => ({
+      x: x(index),
+      y: key === 'cost' ? yCost(point.totalCost) : yTokens(point[key]),
+    }))
+    return smoothPath(linePoints)
   }
 
   return (
