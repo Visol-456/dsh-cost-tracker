@@ -1,7 +1,7 @@
 {
   "name": "@visol-456/dsh-cost-tracker",
   "description": "LLM cost tracker for the DeepSeek Harness: bills every model call from provider token usage (cache hit/miss included), shows per-call cost in the conversation stats line, a per-session summary, and a CC-Switch-style usage statistics dashboard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publishConfig": {
     "access": "public"
   },
@@ -32,7 +32,9 @@
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts",
     "lib/client.js",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "README.md",
+    "README_en.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.client.json && tsdown",
