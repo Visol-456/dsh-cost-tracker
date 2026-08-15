@@ -231,8 +231,13 @@ export function apply(ctx: Context, config: Config, internals: CostTrackerIntern
     }
   }, { global: true })
 
-  // Settings seam for the price table.
-  installSettingsSection(ctx, COST_TRACKER_SETTINGS_NAMESPACE, PriceSection, basePrices, {
+  // Settings seam for the price table. The base layer is a *detached* clone:
+  // DEFAULT_PRICE_TABLE / resolvePriceTable() are deep-frozen, and the
+  // settings provider's schema coercion writes into the merged base layer —
+  // a frozen base makes register() throw ("Cannot assign to read only
+  // property"), the namespace never registers, and the bridge reports the
+  // price editor unavailable. structuredClone yields a writable plain copy.
+  installSettingsSection(ctx, COST_TRACKER_SETTINGS_NAMESPACE, PriceSection, structuredClone(basePrices), {
     setSource: (current) => { pricesSource = current },
     onChange: () => { rebuild(pricesSource()) },
     validate: (value) => { resolvePriceTable(value) },

@@ -11,6 +11,9 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 /** Route prefix of the node bridge (same-origin with the web shell). */
 export const BRIDGE_PATH = '/cost-tracker'
 
+/** Request-log page size served by the bridge (15 rows is enough for a glance). */
+export const LOG_PAGE_SIZE = 15
+
 // ---- wire types (mirror of the node half) ----
 
 /** One recorded call as served by the bridge. */
@@ -188,7 +191,7 @@ export class UsageStatsStore {
       const [overview, trends, requests, providers, models, options] = await Promise.all([
         getJson(`/overview${queryString(filter)}`) as Promise<CostOverviewWire>,
         getJson(`/trends${queryString(filter)}`) as Promise<CostTrendPointWire[]>,
-        getJson(`/requests${queryString(filter, { limit: '50', offset: String(offset) })}`) as Promise<CostRequestLogPageWire>,
+        getJson(`/requests${queryString(filter, { limit: String(LOG_PAGE_SIZE), offset: String(offset) }) }`) as Promise<CostRequestLogPageWire>,
         getJson(`/providers${queryString(filter)}`) as Promise<ProviderCostStatWire[]>,
         getJson(`/models${queryString(filter)}`) as Promise<ModelCostStatWire[]>,
         getJson('/options') as Promise<CostOptionsWire>,

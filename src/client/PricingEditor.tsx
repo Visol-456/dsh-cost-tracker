@@ -138,17 +138,22 @@ export function PricingEditor({ t }: PricingEditorProps) {
   }
   if (form === undefined) return null
 
+  // Without a settings provider the table is a read-only view of the
+  // deployment's price table — explain where to edit it instead of showing
+  // a bare error.
+  const readOnly = !status.available || !status.writable
+
   return (
     <div className={css.pricingCard}>
       <div className={css.cardHeader}>
         <h3 className={css.cardTitle}>{t('pricing')}</h3>
         <span className={css.cardMeta}>{t('pricingDescription')}</span>
       </div>
-      {!status.available && <div className={css.error}>{t('pricesUnavailable')}</div>}
+      {!status.available && <div className={css.pricingNotice}>{t('pricesUnavailable')}</div>}
 
       <div className={css.priceRow}>
         <div className={css.priceRowHeader}>{t('defaultPrice')}</div>
-        <PriceFields row={form.default} onChange={(patch) => patchRow('default', patch)} t={t} />
+        <PriceFields row={form.default} onChange={(patch) => patchRow('default', patch)} t={t} disabled={readOnly} />
       </div>
 
       <div className={css.priceRowHeader}>{t('modelPrices')}</div>
@@ -158,18 +163,20 @@ export function PricingEditor({ t }: PricingEditorProps) {
             <input
               className={css.modelInput}
               value={model}
+              disabled={readOnly}
               onChange={(event) => renameModel(model, event.target.value)}
             />
-            <button type="button" className={css.removeButton} onClick={() => removeModel(model)}>
+            <button type="button" className={css.removeButton} disabled={readOnly} onClick={() => removeModel(model)}>
               {t('removeModel')}
             </button>
           </div>
-          <PriceFields row={row} onChange={(patch) => patchRow(model, patch)} t={t} />
+          <PriceFields row={row} onChange={(patch) => patchRow(model, patch)} t={t} disabled={readOnly} />
         </div>
       ))}
       <button
         type="button"
         className={css.addButton}
+        disabled={readOnly}
         onClick={() => {
           if (form === undefined) return
           setForm({ ...form, models: { ...form.models, '': emptyModelPrice() } })
@@ -180,10 +187,10 @@ export function PricingEditor({ t }: PricingEditorProps) {
       </button>
 
       <div className={css.priceActions}>
-        <button type="button" className={css.saveButton} disabled={saving || !status.writable || !dirty} onClick={() => void save()}>
+        <button type="button" className={css.saveButton} disabled={saving || readOnly || !dirty} onClick={() => void save()}>
           {saving ? t('saving') : t('save')}
         </button>
-        <button type="button" className={css.resetButton} disabled={saving || !status.writable} onClick={() => void reset()}>
+        <button type="button" className={css.resetButton} disabled={saving || readOnly} onClick={() => void reset()}>
           {saving ? t('resetting') : t('reset')}
         </button>
         {message !== null && (
@@ -198,10 +205,11 @@ interface PriceFieldsProps {
   row: CostModelPriceForm
   onChange: (patch: Partial<CostModelPriceForm>) => void
   t: (key: string, params?: Record<string, unknown>) => string
+  disabled?: boolean
 }
 
 /** One price row: three price inputs + optional peak block. */
-function PriceFields({ row, onChange, t }: PriceFieldsProps) {
+function PriceFields({ row, onChange, t, disabled = false }: PriceFieldsProps) {
   return (
     <div className={css.priceFields}>
       <label className={css.priceField}>
@@ -211,6 +219,7 @@ function PriceFields({ row, onChange, t }: PriceFieldsProps) {
           type="number"
           min={0}
           step="any"
+          disabled={disabled}
           value={row.inputPerMillion}
           onChange={(event) => onChange({ inputPerMillion: event.target.value })}
         />
@@ -222,6 +231,7 @@ function PriceFields({ row, onChange, t }: PriceFieldsProps) {
           type="number"
           min={0}
           step="any"
+          disabled={disabled}
           value={row.outputPerMillion}
           onChange={(event) => onChange({ outputPerMillion: event.target.value })}
         />
@@ -233,6 +243,7 @@ function PriceFields({ row, onChange, t }: PriceFieldsProps) {
           type="number"
           min={0}
           step="any"
+          disabled={disabled}
           value={row.cacheHitPerMillion}
           onChange={(event) => onChange({ cacheHitPerMillion: event.target.value })}
         />
@@ -240,6 +251,7 @@ function PriceFields({ row, onChange, t }: PriceFieldsProps) {
       <label className={css.peakToggle}>
         <input
           type="checkbox"
+          disabled={disabled}
           checked={row.peak}
           onChange={(event) => onChange({ peak: event.target.checked })}
         />
@@ -254,6 +266,7 @@ function PriceFields({ row, onChange, t }: PriceFieldsProps) {
               type="number"
               min={0}
               step="any"
+              disabled={disabled}
               value={row.peakInputPerMillion}
               onChange={(event) => onChange({ peakInputPerMillion: event.target.value })}
             />
@@ -265,6 +278,7 @@ function PriceFields({ row, onChange, t }: PriceFieldsProps) {
               type="number"
               min={0}
               step="any"
+              disabled={disabled}
               value={row.peakOutputPerMillion}
               onChange={(event) => onChange({ peakOutputPerMillion: event.target.value })}
             />
@@ -276,6 +290,7 @@ function PriceFields({ row, onChange, t }: PriceFieldsProps) {
               type="number"
               min={0}
               step="any"
+              disabled={disabled}
               value={row.peakCacheHitPerMillion}
               onChange={(event) => onChange({ peakCacheHitPerMillion: event.target.value })}
             />
@@ -284,6 +299,7 @@ function PriceFields({ row, onChange, t }: PriceFieldsProps) {
             <span>{t('peakHours')}</span>
             <input
               className={css.priceInput}
+              disabled={disabled}
               value={row.peakHours}
               onChange={(event) => onChange({ peakHours: event.target.value })}
             />

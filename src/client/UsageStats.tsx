@@ -50,6 +50,8 @@ export type UsageStatsSectionProps = UsageStatsViewProps
 const RANGE_PRESETS = ['today', '1d', '7d', '14d', '30d'] as const
 const REFRESH_OPTIONS = [0, 5_000, 10_000, 30_000, 60_000] as const
 const DEFAULT_REFRESH_MS = 30_000
+/** Request-log page size: 15 rows is enough for a glance (CC Switch density). */
+const LOG_PAGE_SIZE = 15
 
 /** Cascade helper: changing the provider clears the model filter. */
 function useFilters() {
@@ -254,7 +256,7 @@ export function UsageStatsView({ controller, useSnapshot, t }: UsageStatsViewPro
             ? <div className={css.empty}>{t('noData')}</div>
             : (
               <div className={css.tableWrap}>
-                <table className={css.table}>
+                <table className={`${css.table} ${css.logTable}`}>
                   <thead>
                     <tr>
                       <th>{t('time')}</th>
@@ -284,22 +286,22 @@ export function UsageStatsView({ controller, useSnapshot, t }: UsageStatsViewPro
                 </table>
               </div>
             )}
-          {state.requestsTotal > 50 && (
+          {state.requestsTotal > LOG_PAGE_SIZE && (
             <div className={css.pager}>
               <button
                 type="button"
                 className={css.pageButton}
                 disabled={offset === 0}
-                onClick={() => setOffset(Math.max(0, offset - 50))}
+                onClick={() => setOffset(Math.max(0, offset - LOG_PAGE_SIZE))}
               >
                 {t('pagePrev')}
               </button>
-              <span className={css.pageInfo}>{offset + 1}–{Math.min(offset + 50, state.requestsTotal)} / {state.requestsTotal}</span>
+              <span className={css.pageInfo}>{offset + 1}–{Math.min(offset + LOG_PAGE_SIZE, state.requestsTotal)} / {state.requestsTotal}</span>
               <button
                 type="button"
                 className={css.pageButton}
-                disabled={offset + 50 >= state.requestsTotal}
-                onClick={() => setOffset(offset + 50)}
+                disabled={offset + LOG_PAGE_SIZE >= state.requestsTotal}
+                onClick={() => setOffset(offset + LOG_PAGE_SIZE)}
               >
                 {t('pageNext')}
               </button>

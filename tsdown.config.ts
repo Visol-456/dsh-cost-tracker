@@ -97,8 +97,17 @@ const clientConfig = {
         cssModules: { pattern: '[hash]_[local]' },
         minify: true,
       })
+      // lightningcss emits only the original locals (`ct-legend`, ...) but the
+      // components read `css.ctLegend` — without the camelCase aliases every
+      // chart class silently resolves to undefined at runtime. Emit both forms.
+      const camelize = (local: string): string =>
+        local.replace(/-+([a-z0-9])/g, (_match, letter: string) => letter.toUpperCase())
       const classMap: Record<string, string> = {}
-      for (const [local, exp] of Object.entries(cssExports ?? {})) classMap[local] = exp.name
+      for (const [local, exp] of Object.entries(cssExports ?? {})) {
+        classMap[local] = exp.name
+        const camel = camelize(local)
+        if (camel !== local) classMap[camel] = exp.name
+      }
       const tagId = `${CLIENT_ID}/${basename(fileId)}`
       return [
         `const css = ${JSON.stringify(code.toString())};`,
