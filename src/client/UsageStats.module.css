@@ -6,7 +6,9 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-bottom: 24px;
+  /* Clearance for the composer dock: when the view is scrolled to the very
+     bottom the last table row must stay fully visible above the input bar. */
+  padding-bottom: 96px;
   width: 100%;
   min-width: 0;
   /* Breathe: the dashboard must not stretch edge-to-edge (CC Switch keeps a
@@ -317,19 +319,29 @@
 }
 
 /* Fixed layout + explicit column widths: every row's numbers sit exactly
-   under their header (auto layout lets the wide timestamp dominate). */
+   under their header (auto layout lets the wide timestamp dominate). At
+   narrow containers the table keeps a comfortable min-width and the wrapper
+   scrolls horizontally — headers never squeeze into each other. */
 .logTable {
   table-layout: fixed;
+  min-width: 800px;
 }
 
-.logTable th:nth-child(1) { width: 22%; }
-.logTable th:nth-child(2) { width: 11%; }
-.logTable th:nth-child(3) { width: 15%; }
-.logTable th:nth-child(4) { width: 8%; }
+.logTable th:nth-child(1) { width: 19%; }
+.logTable th:nth-child(2) { width: 16%; }
+.logTable th:nth-child(3) { width: 16%; }
+.logTable th:nth-child(4) { width: 11.5%; }
 .logTable th:nth-child(5) { width: 8%; }
-.logTable th:nth-child(6) { width: 8%; }
-.logTable th:nth-child(7) { width: 9%; }
-.logTable th:nth-child(8) { width: 19%; }
+.logTable th:nth-child(6) { width: 10.5%; }
+.logTable th:nth-child(7) { width: 11%; }
+.logTable th:nth-child(8) { width: 8%; }
+
+/* Fallback: if a header still outgrows its column (unusual fonts/locales),
+   wrap the words instead of overlapping the neighbour column. */
+.logTable th {
+  white-space: normal;
+  line-height: 1.35;
+}
 
 .table th {
   text-align: left;
