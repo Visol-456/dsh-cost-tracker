@@ -272,9 +272,21 @@ export function UsageStatsView({ controller, useSnapshot, t }: UsageStatsViewPro
                   <tbody>
                     {state.requests.map(row => (
                       <tr key={row.id}>
-                        <td className={css.mono}>{new Date(row.completedAt).toLocaleString()}</td>
-                        <td>{row.provider}</td>
-                        <td>{row.model}</td>
+                        {/* CC Switch-style compact timestamp (MM/DD HH:mm);
+                            the full value is available on hover. */}
+                        <td
+                          className={css.mono}
+                          title={new Date(row.completedAt).toLocaleString()}
+                        >
+                          {new Date(row.completedAt).toLocaleString(undefined, {
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td title={row.provider}>{row.provider}</td>
+                        <td title={row.model}>{row.model}</td>
                         <td className={css.num}>{row.inputTokens.toLocaleString()}</td>
                         <td className={css.num}>{row.outputTokens.toLocaleString()}</td>
                         <td className={css.num}>{row.cacheReadTokens.toLocaleString()}</td>

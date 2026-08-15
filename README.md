@@ -18,6 +18,14 @@ token 用量（输入 / 输出 / 缓存命中 / 缓存未命中）与价格表�
 
 > DeepSeek Harness `dsh-plugin` 生态的社区插件，不属于官方仓库。
 
+## 致谢 / 设计参考
+
+使用统计页面（指标卡、双 Y 轴趋势图、请求日志表格、tooltip 交互等）的 UI 全面对齐
+[CC Switch](https://github.com/farion1231/cc-switch)（MIT 协议）的 Usage Statistics
+页面 —— 布局、配色、图表样式与交互密度均以其为蓝本。向 CC Switch 原作者
+farion1231 及项目致谢；本插件为独立实现（自绘 SVG 图表，未引入 recharts），
+仅参考其视觉设计与交互模式。
+
 ## 开发原因
 
 DeepSeek 2026-08-17 起调整价格并引入峰谷定价（高峰 9:00-12:00、14:00-18:00 为高峰价，

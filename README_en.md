@@ -24,6 +24,16 @@ call, and shows three layers of UI in dsh web:
 > A community plugin for the DeepSeek Harness `dsh-plugin` ecosystem — not part of
 > the official repository.
 
+## Acknowledgements / Design reference
+
+The usage statistics page (metric cards, dual-axis trend chart, request-log
+table, tooltip interaction, etc.) closely follows the Usage Statistics page of
+[CC Switch](https://github.com/farion1231/cc-switch) (MIT licensed) — layout,
+colors, chart style, and interaction density are modeled after it. Thanks to
+farion1231 and the CC Switch project. This plugin is an independent
+implementation (hand-rolled SVG charts, no recharts dependency); only the
+visual design and interaction patterns are referenced.
+
 ## Why
 
 DeepSeek changes pricing on 2026-08-17 and introduces peak/off-peak rates

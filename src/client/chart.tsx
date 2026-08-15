@@ -4,6 +4,11 @@
  * bundle). Mirrors the CC Switch trend layout: four token series on the left
  * axis, the cost series on the right axis, per-series gradient area fills,
  * legend below, hover tooltip.
+ *
+ * The tooltip mimics the recharts default behavior that makes CC Switch
+ * charts feel smooth: the card follows the cursor on every mousemove (values
+ * snap to the nearest data point, position tracks the pointer) and flips to
+ * the other side of the cursor when it would leave the plot area.
  * @module @visol-456/dsh-cost-tracker/client/chart
  */
 
@@ -36,6 +41,11 @@ export function formatCost(n: number): string {
   return n.toFixed(4)
 }
 
+/** Compact axis label for a cost tick (¥0.29 / ¥1.2). */
+function costTickLabel(n: number): string {
+  return n >= 100 ? `¥${formatTokensShort(n)}` : `¥${n >= 1 ? n.toFixed(1) : n.toFixed(2)}`
+}
+
 // Flat, wide aspect (CC Switch density): the chart must stay short and wide,
 // never dominating the page.
 const WIDTH = 760
@@ -43,6 +53,10 @@ const HEIGHT = 208
 const MARGIN = { top: 10, right: 46, bottom: 22, left: 46 }
 const PLOT_WIDTH = WIDTH - MARGIN.left - MARGIN.right
 const PLOT_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom
+
+/** Tooltip card size (matches the light card drawn in the SVG). */
+const TOOLTIP_WIDTH = 176
+const TOOLTIP_HEIGHT = 118
 
 interface ChartProps {
   points: CostTrendPointWire[]
@@ -90,14 +104,22 @@ function smoothAreaPath(points: readonly { x: number; y: number }[], baselineY: 
   return `${line} L${last.x.toFixed(1)},${baselineY.toFixed(1)} L${first.x.toFixed(1)},${baselineY.toFixed(1)} Z`
 }
 
+/** Cursor position in viewBox coordinates. */
+interface CursorPos {
+  x: number
+  y: number
+}
+
 /**
  * Dual-axis trend chart: left axis = tokens, right axis = cost. Points are
  * mapped to x by index (even spacing), y by value with per-axis scales.
  * Each series gets a vertical gradient area under its curve (CC Switch
- * style); the tooltip is a light card whose row text takes the series color.
+ * style); the tooltip is a light card that follows the cursor and flips
+ * sides at the plot edges (recharts behavior).
  */
 export function DualAxisTrendChart({ points, t }: ChartProps) {
   const [hovered, setHovered] = useState<number | null>(null)
+  const [cursor, setCursor] = useState<CursorPos | null>(null)
 
   const scales = useMemo(() => {
     let maxTokens = 0
@@ -137,10 +159,16 @@ export function DualAxisTrendChart({ points, t }: ChartProps) {
     .map((point, index) => ({ point, index }))
     .filter(({ index }) => index % labelStep === 0 || index === points.length - 1)
 
-  // 4 horizontal gridlines with token tick labels.
+  // 4 horizontal gridlines with token ticks on the left axis…
   const gridlines = [0, 1, 2, 3, 4].map((step) => {
     const value = scales.maxTokens * step / 4
     return { value, y: yTokens(value) }
+  })
+
+  // …and cost ticks on the right axis (CC Switch renders both axes).
+  const costTicks = [0, 1, 2, 3, 4].map((step) => {
+    const value = scales.maxCost * step / 4
+    return { value, y: yCost(value) }
   })
 
   const hoveredPoint = hovered === null ? null : points[hovered]
@@ -162,6 +190,17 @@ export function DualAxisTrendChart({ points, t }: ChartProps) {
     return smoothAreaPath(linePoints, baselineY)
   }
 
+  // Tooltip placement: follow the cursor, offset like recharts; flip to the
+  // left/above when the card would cross the plot edge.
+  const cursorX = cursor?.x ?? hoveredX ?? MARGIN.left
+  const cursorY = cursor?.y ?? MARGIN.top
+  let tooltipX = cursorX + 12
+  if (tooltipX + TOOLTIP_WIDTH > WIDTH - 2) tooltipX = cursorX - 12 - TOOLTIP_WIDTH
+  tooltipX = Math.max(2, Math.min(tooltipX, WIDTH - TOOLTIP_WIDTH - 2))
+  let tooltipY = cursorY - TOOLTIP_HEIGHT - 10
+  if (tooltipY < MARGIN.top - 2) tooltipY = cursorY + 12
+  tooltipY = Math.max(2, Math.min(tooltipY, HEIGHT - TOOLTIP_HEIGHT - 2))
+
   return (
     <div className={css.ctChartWrap}>
       <svg
@@ -170,10 +209,15 @@ export function DualAxisTrendChart({ points, t }: ChartProps) {
         onMouseMove={(event) => {
           const rect = (event.currentTarget as SVGSVGElement).getBoundingClientRect()
           const px = (event.clientX - rect.left) / rect.width * WIDTH
+          const py = (event.clientY - rect.top) / rect.height * HEIGHT
+          setCursor({ x: px, y: py })
           const index = Math.round((px - MARGIN.left) / PLOT_WIDTH * (points.length - 1))
           setHovered(Math.max(0, Math.min(points.length - 1, index)))
         }}
-        onMouseLeave={() => setHovered(null)}
+        onMouseLeave={() => {
+          setHovered(null)
+          setCursor(null)
+        }}
       >
         <defs>
           {SERIES.map(({ key, color }) => (
@@ -191,6 +235,11 @@ export function DualAxisTrendChart({ points, t }: ChartProps) {
               {formatTokensShort(value)}
             </text>
           </g>
+        ))}
+        {costTicks.map(({ value, y }) => (
+          <text key={value} x={MARGIN.left + PLOT_WIDTH + 6} y={y + 3} className={css.ctTick}>
+            {costTickLabel(value)}
+          </text>
         ))}
         {xLabels.map(({ point, index }) => (
           <text key={index} x={x(index)} y={HEIGHT - 6} textAnchor="middle" className={css.ctTick}>
@@ -229,9 +278,9 @@ export function DualAxisTrendChart({ points, t }: ChartProps) {
           </g>
         )}
 
-        {hoveredPoint !== null && hoveredX !== null && (
-          <g transform={`translate(${Math.min(hoveredX + 10, WIDTH - 186)}, ${MARGIN.top + 4})`}>
-            <rect width={176} height={118} rx={6} className={css.ctTooltipBg} />
+        {hoveredPoint !== null && (
+          <g transform={`translate(${tooltipX}, ${tooltipY})`}>
+            <rect width={TOOLTIP_WIDTH} height={TOOLTIP_HEIGHT} rx={6} className={css.ctTooltipBg} />
             <text x={10} y={16} className={css.ctTooltipTitle}>{hoveredPoint.label}</text>
             {SERIES.map(({ key, color }, index) => (
               <g key={key}>
@@ -239,7 +288,7 @@ export function DualAxisTrendChart({ points, t }: ChartProps) {
                 <text x={22} y={35 + index * 16} className={css.ctTooltipName} fill={color}>
                   {key === 'cost' ? t('cost') : t(key === 'inputTokens' ? 'freshInput' : key === 'outputTokens' ? 'output' : key === 'cacheWriteTokens' ? 'cacheWrite' : 'cacheRead')}
                 </text>
-                <text x={166} y={35 + index * 16} textAnchor="end" className={css.ctTooltipValue} fill={color}>
+                <text x={TOOLTIP_WIDTH - 10} y={35 + index * 16} textAnchor="end" className={css.ctTooltipValue} fill={color}>
                   {key === 'cost' ? formatCost(hoveredPoint.totalCost) : formatTokensShort(hoveredPoint[key])}
                 </text>
               </g>

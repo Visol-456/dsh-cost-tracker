@@ -1,7 +1,7 @@
 {
   "name": "@visol-456/dsh-cost-tracker",
   "description": "LLM cost tracker for the DeepSeek Harness: bills every model call from provider token usage (cache hit/miss included), shows per-call cost in the conversation stats line, a per-session summary, and a CC-Switch-style usage statistics dashboard",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },
