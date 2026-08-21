@@ -145,17 +145,17 @@ describe('real Loader composition', () => {
       version: 1,
     })
     // Costs are floats; compare with tolerance.
-    expect(record.inputCost as number).toBeCloseTo(1_000 / 1_000_000 * 1, 12)        // ¥1/M uncached
-    expect(record.cacheHitCost as number).toBeCloseTo(2_000 / 1_000_000 * 0.02, 12)  // ¥0.02/M cached
-    expect(record.outputCost as number).toBeCloseTo(250 / 1_000_000 * 2, 12)         // ¥2/M output
-    expect(record.totalCost as number).toBeCloseTo((1_000 + 2_000 * 0.02 + 250 * 2) / 1_000_000, 12)
+    expect(record.inputCost as number).toBeCloseTo(1_000 / 1_000_000 * 1.5, 12)        // ¥1.5/M uncached (off-peak)
+    expect(record.cacheHitCost as number).toBeCloseTo(2_000 / 1_000_000 * 0.05, 12)    // ¥0.05/M cached (off-peak)
+    expect(record.outputCost as number).toBeCloseTo(250 / 1_000_000 * 4.5, 12)         // ¥4.5/M output (off-peak)
+    expect(record.totalCost as number).toBeCloseTo((1_000 * 1.5 + 2_000 * 0.05 + 250 * 4.5) / 1_000_000, 12)
 
     // A fresh store over the same directory serves the session summary.
     const store = new CostStore(costsDir!)
     await store.init()
     const summary = store.sessionSummary('loader-costs')
     expect(summary.requests).toBe(1)
-    expect(summary.totalCost).toBeCloseTo((1_000 + 2_000 * 0.02 + 250 * 2) / 1_000_000, 12)
+    expect(summary.totalCost).toBeCloseTo((1_000 * 1.5 + 2_000 * 0.05 + 250 * 4.5) / 1_000_000, 12)
     expect(summary.cacheHitRate).toBeCloseTo(2_000 / 3_000, 10)
     expect(summary.latest?.ttftMs).toBeGreaterThanOrEqual(0)
   })

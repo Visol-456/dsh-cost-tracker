@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   DualAxisTrendChart, formatCost, formatTokensShort,
 } from './chart.tsx'
@@ -32,8 +32,8 @@ import css from './UsageStats.module.css'
 export interface UsageStatsViewInjected {
   /** The page store (loaded on mount, refreshed on interval + invalidations). */
   controller: UsageStatsStore
-  /** uSES subscription hook bound to the store. */
-  useSnapshot: SnapshotSelectorHook<UsageStatsState>
+  /** Snapshot source the renderer binds as `useSnapshot`. */
+  hooks: { snapshot: UsageStatsStore['store'] }
   /** View copy. */
   t: (key: string, params?: Record<string, unknown>) => string
 }
@@ -42,7 +42,7 @@ export interface UsageStatsViewInjected {
 export type UsageStatsSectionInjected = UsageStatsViewInjected
 
 /** Props delivered by the slot outlet: runtime kit + inject face spread flat. */
-export type UsageStatsViewProps = ConvViewProps & Partial<UsageStatsViewInjected>
+export type UsageStatsViewProps = ConvViewProps & Partial<InjectFace<UsageStatsViewInjected>>
 
 /** Backwards-compatible alias for the previous settings-section props type. */
 export type UsageStatsSectionProps = UsageStatsViewProps

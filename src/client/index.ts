@@ -8,7 +8,6 @@
  */
 
 import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
 // Type-only: pulls the conversation slot declarations (conversation.view,
 // composer.dock etc.).
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -67,8 +66,7 @@ export function apply(ctx: ClientContext): void {
 
   // Conversation > 使用统计 tab (requirement C), sibling of Chat/Trajectory.
   const controller = new UsageStatsStore()
-  const useSnapshot = bindSnapshotSelector(controller.store)
-  const injected = (_sessionId: SessionId): UsageStatsViewInjected => ({ controller, useSnapshot, t })
+  const injected = (_sessionId: SessionId): UsageStatsViewInjected => ({ controller, hooks: { snapshot: controller.store }, t })
 
   ctx.effect(() => {
     const refresh = (): void => { void controller.load({ fromMs: 0, toMs: Date.now() }, 0) }
@@ -86,7 +84,6 @@ export function apply(ctx: ClientContext): void {
     id: 'usage',
     order: 2,
     label: () => t('nav'),
-    locale: NS,
     inject: injected,
   }, UsageStatsView))
 
@@ -96,6 +93,5 @@ export function apply(ctx: ClientContext): void {
     name: 'conversation.composer.dock',
     id: 'cost-tracker',
     order: 1,
-    locale: NS,
   }, CostLine))
 }

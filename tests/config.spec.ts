@@ -5,7 +5,7 @@ describe('resolveConfig', () => {
   it('defaults the data directory to <harness home>/cost-tracker', () => {
     const resolved = resolveConfig({})
     expect(resolved.dataDir.endsWith('/cost-tracker')).toBe(true)
-    expect(resolved.basePrices.default.inputPerMillion).toBe(1)
+    expect(resolved.basePrices.default.inputPerMillion).toBe(1.5)
   })
 
   it('keeps an explicit dataDir', () => {

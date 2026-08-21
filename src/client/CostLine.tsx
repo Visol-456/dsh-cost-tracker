@@ -15,8 +15,25 @@
 
 import { memo, useEffect, useRef, useState } from 'react'
 import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
+import type { HostObservable, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+// 0.1.1 的 renderer 运行时导出 useSyncExternalStoreWithSelector（公共），
+// 类型暂未随包发布——本地补齐声明后复用（与官方 bindSnapshotSelector 同构）。
+import { useSyncExternalStoreWithSelector } from '@deepseek-ai/dsh-client-ui-renderer/client'
+declare module '@deepseek-ai/dsh-client-ui-renderer/client' {
+  export function useSyncExternalStoreWithSelector<Snapshot, Selection>(
+    subscribe: (onStoreChange: () => void) => () => void,
+    getSnapshot: () => Snapshot,
+    getServerSnapshot: undefined | (() => Snapshot),
+    selector: (snapshot: Snapshot) => Selection,
+    isEqual?: ((a: Selection, b: Selection) => boolean) | undefined,
+  ): Selection
+}
+/** 官方 bindSnapshotSelector 未公开导出，用公共 API 实现同款绑定。 */
+function bindSnapshotSelector<T>(w: HostObservable<T>): SnapshotSelectorHook<T> {
+  const subscribe = (fn: () => void): (() => void) => w.subscribe(fn)
+  const getSnapshot = (): T => w.getSnapshot()
+  return (sel, eq) => useSyncExternalStoreWithSelector(subscribe, getSnapshot, undefined, sel, eq)
+}
 import { CostLineStore } from './store.ts'
 import { formatCost } from './chart.tsx'
 import type { CostTrackerKey } from './locales.ts'

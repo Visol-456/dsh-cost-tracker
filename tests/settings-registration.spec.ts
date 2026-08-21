@@ -58,9 +58,9 @@ describe('settings namespace registration', () => {
     expect(price, 'cost-tracker namespace must be registered').toBeDefined()
     // The resolved value equals the default table (composition base).
     expect(price!.value).toMatchObject({
-      default: { inputPerMillion: 1, outputPerMillion: 2, cacheHitPerMillion: 0.02 },
+      default: { inputPerMillion: 1.5, outputPerMillion: 4.5, cacheHitPerMillion: 0.05 },
       models: {
-        'deepseek-v4-flash': { inputPerMillion: 1, outputPerMillion: 2, cacheHitPerMillion: 0.02 },
+        'deepseek-v4-flash': { inputPerMillion: 1.5, outputPerMillion: 4.5, cacheHitPerMillion: 0.05 },
       },
     })
   })

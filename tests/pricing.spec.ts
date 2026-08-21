@@ -156,14 +156,21 @@ describe('resolvePriceTable validation (fail loud)', () => {
 describe('default table', () => {
   it('matches the official DeepSeek list prices', () => {
     expect(DEFAULT_PRICE_TABLE.models['deepseek-v4-flash']).toMatchObject({
-      inputPerMillion: 1,
-      outputPerMillion: 2,
-      cacheHitPerMillion: 0.02,
+      inputPerMillion: 1.5,
+      outputPerMillion: 4.5,
+      cacheHitPerMillion: 0.05,
+      peak: { inputPerMillion: 3, outputPerMillion: 9, cacheHitPerMillion: 0.1 },
+    })
+    expect(DEFAULT_PRICE_TABLE.models['deepseek-v4-flash-vision-exp']).toMatchObject({
+      inputPerMillion: 1.5,
+      outputPerMillion: 4.5,
+      cacheHitPerMillion: 0.05,
     })
     expect(DEFAULT_PRICE_TABLE.models['deepseek-v4-pro']).toMatchObject({
-      inputPerMillion: 3,
-      outputPerMillion: 6,
-      cacheHitPerMillion: 0.025,
+      inputPerMillion: 4.5,
+      outputPerMillion: 13.5,
+      cacheHitPerMillion: 0.15,
+      peak: { inputPerMillion: 9, outputPerMillion: 27, cacheHitPerMillion: 0.3 },
     })
   })
 })

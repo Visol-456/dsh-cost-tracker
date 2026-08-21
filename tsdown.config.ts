@@ -24,7 +24,7 @@ const CLIENT_ID = '@visol-456/dsh-cost-tracker'
 const PLATFORM_MODULES = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/cordis',
   '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-web-react',
+  '@deepseek-ai/dsh-client-ui-renderer/client',
   '@deepseek-ai/dsh-client-ui-primitives',
   '@deepseek-ai/dsh-client-ui-attachment',
   '@deepseek-ai/dsh-client-schema-form',

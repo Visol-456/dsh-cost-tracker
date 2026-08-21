@@ -51,29 +51,57 @@ export interface PriceTable {
 }
 
 /**
- * Default table: official DeepSeek list prices as of 2026-08-15
- * (deepseek-v4-flash: hit 0.02 / miss 1 / output 2; deepseek-v4-pro:
- * hit 0.025 / miss 3 / output 6 — CNY per million tokens). Peak/off-peak
- * prices take effect 2026-08-17; the flat entries above stay the baseline
- * until the user edits them from Settings > 使用统计 or the settings document.
+ * Default table: official DeepSeek peak/off-peak pricing effective
+ * 2026-08-17, captured 2026-08-21 (off-peak = half of peak price;
+ * Beijing peak windows 09:00-12:00, 14:00-18:00 — CNY per million tokens):
+ * - deepseek-v4-flash: off-peak hit 0.05 / miss 1.5 / output 4.5; peak 0.10 / 3 / 9
+ * - deepseek-v4-flash-vision-exp: same pricing as v4-flash (launched 2026-08-21)
+ * - deepseek-v4-pro: off-peak hit 0.15 / miss 4.5 / output 13.5; peak 0.30 / 9 / 27
+ * The base entries below are the off-peak prices; the `peak` block bills at
+ * peak prices inside the windows. Users can override from Settings > 使用统计.
  */
 export const DEFAULT_PRICE_TABLE: PriceTable = Object.freeze({
   models: Object.freeze({
     'deepseek-v4-flash': Object.freeze({
-      inputPerMillion: 1,
-      outputPerMillion: 2,
-      cacheHitPerMillion: 0.02,
+      inputPerMillion: 1.5,
+      outputPerMillion: 4.5,
+      cacheHitPerMillion: 0.05,
+      peak: Object.freeze({
+        inputPerMillion: 3,
+        outputPerMillion: 9,
+        cacheHitPerMillion: 0.1,
+      }),
+    }),
+    'deepseek-v4-flash-vision-exp': Object.freeze({
+      inputPerMillion: 1.5,
+      outputPerMillion: 4.5,
+      cacheHitPerMillion: 0.05,
+      peak: Object.freeze({
+        inputPerMillion: 3,
+        outputPerMillion: 9,
+        cacheHitPerMillion: 0.1,
+      }),
     }),
     'deepseek-v4-pro': Object.freeze({
-      inputPerMillion: 3,
-      outputPerMillion: 6,
-      cacheHitPerMillion: 0.025,
+      inputPerMillion: 4.5,
+      outputPerMillion: 13.5,
+      cacheHitPerMillion: 0.15,
+      peak: Object.freeze({
+        inputPerMillion: 9,
+        outputPerMillion: 27,
+        cacheHitPerMillion: 0.3,
+      }),
     }),
   }),
   default: Object.freeze({
-    inputPerMillion: 1,
-    outputPerMillion: 2,
-    cacheHitPerMillion: 0.02,
+    inputPerMillion: 1.5,
+    outputPerMillion: 4.5,
+    cacheHitPerMillion: 0.05,
+    peak: Object.freeze({
+      inputPerMillion: 3,
+      outputPerMillion: 9,
+      cacheHitPerMillion: 0.1,
+    }),
   }),
 })
 
