@@ -14,36 +14,18 @@
  */
 
 import { memo, useEffect, useRef, useState } from 'react'
-import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
-import type { HostObservable, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-// 0.1.1 的 renderer 运行时导出 useSyncExternalStoreWithSelector（公共），
-// 类型暂未随包发布——本地补齐声明后复用（与官方 bindSnapshotSelector 同构）。
-import { useSyncExternalStoreWithSelector } from '@deepseek-ai/dsh-client-ui-renderer/client'
-declare module '@deepseek-ai/dsh-client-ui-renderer/client' {
-  export function useSyncExternalStoreWithSelector<Snapshot, Selection>(
-    subscribe: (onStoreChange: () => void) => () => void,
-    getSnapshot: () => Snapshot,
-    getServerSnapshot: undefined | (() => Snapshot),
-    selector: (snapshot: Snapshot) => Selection,
-    isEqual?: ((a: Selection, b: Selection) => boolean) | undefined,
-  ): Selection
-}
-/** 官方 bindSnapshotSelector 未公开导出，用公共 API 实现同款绑定。 */
-function bindSnapshotSelector<T>(w: HostObservable<T>): SnapshotSelectorHook<T> {
-  const subscribe = (fn: () => void): (() => void) => w.subscribe(fn)
-  const getSnapshot = (): T => w.getSnapshot()
-  return (sel, eq) => useSyncExternalStoreWithSelector(subscribe, getSnapshot, undefined, sel, eq)
-}
-import { CostLineStore } from './store.ts'
+import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import { CostLineStore, type CostLineState } from './store.ts'
 import { formatCost } from './chart.tsx'
 import type { CostTrackerKey } from './locales.ts'
 import css from './CostLine.module.css'
 
-/** Props delivered by the dock outlet: the standard kit (plus locale seat).
- *  Partial so the slot framework fills every field from the kit/locale. */
+/** Props delivered by the dock outlet: session kit + injected summary store + locale seat. */
 export interface CostLineProps {
-  sessionId: string | undefined
-  useSession: SnapshotSelectorHook<ConversationSnapshot>
+  sessionId: string
+  useSession: SnapshotSelectorHook<SessionSnapshot>
+  useSnapshot: SnapshotSelectorHook<CostLineState>
   t: (key: CostTrackerKey, params?: Record<string, unknown>) => string
 }
 
@@ -54,7 +36,8 @@ const REFRESH_MS = 30_000
 /** One controller per mounted entry (fresh on session switch). */
 const controllers = new Map<string, CostLineStore>()
 
-function controllerFor(sessionId: string): CostLineStore {
+/** Stable per-session store shared by the component and the slot injector. */
+export function costLineControllerFor(sessionId: string): CostLineStore {
   let controller = controllers.get(sessionId)
   if (controller === undefined) {
     controller = new CostLineStore()
@@ -64,35 +47,29 @@ function controllerFor(sessionId: string): CostLineStore {
 }
 
 /** The summary line: `费用 ¥0.0042 · 会话 ¥0.1234` with a summary toggle. */
-export const CostLine = memo(function CostLine({ sessionId, useSession, t }: CostLineSlotProps) {
-  if (useSession === undefined || t === undefined) return null
-  // The settled node list changes on every committed session event; its
-  // identity is the "new message" refresh trigger.
-  const nodes = useSession(s => s.chat.legacy.nodes)
-  const controller = sessionId === undefined ? undefined : controllerFor(sessionId)
-  const useSnapshot = controller === undefined ? undefined : bindSnapshotSelector(controller.store)
-  const summary = useSnapshot === undefined ? undefined : useSnapshot(s => s.summary)
-  const status = useSnapshot === undefined ? undefined : useSnapshot(s => s.status)
+export const CostLine = memo(function CostLine({ sessionId, useSession, useSnapshot, t }: CostLineProps) {
+  // SessionSnapshot changes as a turn starts/ends or queued input moves; it is
+  // the cheap "new message happened" refresh signal for the session summary.
+  const activity = useSession(s => `${s.running ? 1 : 0}:${s.pendingSubmissions.length}:${s.queue.length}`)
+  const summary = useSnapshot(s => s.summary)
+  const status = useSnapshot(s => s.status)
   const [open, setOpen] = useState(false)
 
-  const nodesRef = useRef(nodes)
+  const activityRef = useRef(activity)
   useEffect(() => {
-    const changed = nodesRef.current !== nodes
-    nodesRef.current = nodes
-    if (changed || summary === undefined) {
-      if (sessionId !== undefined) void controllerFor(sessionId).load(sessionId)
-    }
-  }, [nodes, sessionId, summary])
+    const changed = activityRef.current !== activity
+    activityRef.current = activity
+    if (changed || summary === undefined) void costLineControllerFor(sessionId).load(sessionId)
+  }, [activity, sessionId, summary])
 
   // Slow refresh while mounted (the bridge is cheap; keeps totals honest
   // even if a snapshot signal is missed).
   useEffect(() => {
-    if (sessionId === undefined) return
-    const timer = setInterval(() => { void controllerFor(sessionId).load(sessionId) }, REFRESH_MS)
+    const timer = setInterval(() => { void costLineControllerFor(sessionId).load(sessionId) }, REFRESH_MS)
     return () => clearInterval(timer)
   }, [sessionId])
 
-  if (sessionId === undefined || summary === undefined) return null
+  if (summary === undefined) return null
 
   const line = summary.requests === 0
     ? null

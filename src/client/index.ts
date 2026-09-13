@@ -7,26 +7,31 @@
  * @module @visol-456/dsh-cost-tracker/client
  */
 
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // Type-only: pulls the conversation slot declarations (conversation.view,
 // composer.dock etc.).
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 // Type-only: pulls the ctx.locale Context merge into this program.
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: pulls the session-standard props merge (sessionId/useSession)
+// used by the composer-dock entry.
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+// Type-only: pulls the ctx.slots merge and the connection/reset event.
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-connection/client'
 // Type-only: pulls the ctx.remote merge and the forwarded-event key face.
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-settings/types'
 import { UsageStatsStore } from './store.ts'
-import type { UsageStatsState } from './store.ts'
-import { UsageStatsView, type UsageStatsViewInjected } from './UsageStats.tsx'
-import { CostLine, type CostLineProps } from './CostLine.tsx'
+import { UsageStatsView } from './UsageStats.tsx'
+import { CostLine, costLineControllerFor } from './CostLine.tsx'
 import { zh, en, type CostTrackerKey } from './locales.ts'
 
 export type {
   UsageStatsViewInjected, UsageStatsViewProps,
   UsageStatsSectionInjected, UsageStatsSectionProps,
 } from './UsageStats.tsx'
-export type { CostLineProps } from './CostLine.tsx'
+export type { CostLineProps, CostLineSlotProps } from './CostLine.tsx'
 export {
   CostLineStore, UsageStatsStore, loadPriceConfig, resetPriceConfig, savePriceConfig,
 } from './store.ts'
@@ -62,16 +67,16 @@ export const inject = ['slots', 'locale', 'remote']
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'cost-tracker: dictionaries')
 
-  const t = ctx.locale.bind(NS) as (key: string, params?: Record<string, unknown>) => string
+  const t = ctx.locale.bind(NS)
 
   // Conversation > 使用统计 tab (requirement C), sibling of Chat/Trajectory.
+  // The locale registration supplies the typed `t` seat; the inject face
+  // supplies the controller and the `useSnapshot` selector hook.
   const controller = new UsageStatsStore()
-  const injected = (_sessionId: SessionId): UsageStatsViewInjected => ({ controller, hooks: { snapshot: controller.store }, t })
-
   ctx.effect(() => {
     const refresh = (): void => { void controller.load({ fromMs: 0, toMs: Date.now() }, 0) }
     const disposers = [
-      ctx.remote.$on('settings/document-updated', (ns) => {
+      ctx.remote.$on('settings/document-updated', (ns: string) => {
         if (ns === NS) refresh()
       }),
       ctx.on('connection/reset', refresh),
@@ -84,14 +89,19 @@ export function apply(ctx: ClientContext): void {
     id: 'usage',
     order: 2,
     label: () => t('nav'),
-    inject: injected,
+    locale: NS,
+    inject: () => ({ controller, hooks: { snapshot: controller.store } }),
   }, UsageStatsView))
 
   // Conversation stats band: per-call cost + session summary (A + B).
-  // Order 1 renders right under the shipped stats line (order 0).
+  // Order 1 renders right under the shipped stats line (order 0). The inject
+  // face builds one lazy summary store per session and exposes it as
+  // `useSnapshot`; the component reads the session standard kit for refresh.
   ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
     name: 'conversation.composer.dock',
     id: 'cost-tracker',
     order: 1,
+    locale: NS,
+    inject: sessionId => ({ hooks: { snapshot: costLineControllerFor(sessionId).store } }),
   }, CostLine))
 }

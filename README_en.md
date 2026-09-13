@@ -23,6 +23,11 @@ call, and shows three layers of UI in dsh web:
 
 > A community plugin for the DeepSeek Harness `dsh-plugin` ecosystem — not part of
 > the official repository.
+>
+> Compatible with the DeepSeek Harness **0.1.5-rc.1** wave: `peerDependencies` /
+> `devDependencies` are aligned to `^0.1.5-rc.1`, and the source is adapted to the
+> 0.1.5 settings seam (`SettingsProvider.installSection`), client store / slot
+> hooks, and assistant-stream TTFT.
 
 ## Acknowledgements / Design reference
 

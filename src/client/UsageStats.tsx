@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type { InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   DualAxisTrendChart, formatCost, formatTokensShort,
 } from './chart.tsx'
@@ -26,6 +26,7 @@ import { resolveRange } from './store.ts'
 import type { CostModelPriceForm } from './usage-stats-model.ts'
 import { emptyModelPrice, parseHours, priceSectionFromForm } from './usage-stats-model.ts'
 import { PricingEditor } from './PricingEditor.tsx'
+import type { CostTrackerKey } from './locales.ts'
 import css from './UsageStats.module.css'
 
 /** Injected dependencies of the view (slot `inject`). */
@@ -34,20 +35,30 @@ export interface UsageStatsViewInjected {
   controller: UsageStatsStore
   /** Snapshot source the renderer binds as `useSnapshot`. */
   hooks: { snapshot: UsageStatsStore['store'] }
-  /** View copy. */
-  t: (key: string, params?: Record<string, unknown>) => string
 }
 
 /** Backwards-compatible alias for the previous settings-section inject face. */
 export type UsageStatsSectionInjected = UsageStatsViewInjected
 
-/** Props delivered by the slot outlet: runtime kit + inject face spread flat. */
-export type UsageStatsViewProps = ConvViewProps & Partial<InjectFace<UsageStatsViewInjected>>
+/** Props delivered by the slot outlet: runtime kit + locale seat + inject face. */
+export type UsageStatsViewProps = ConvViewProps & PropsLocale<'cost-tracker'> & InjectFace<UsageStatsViewInjected>
 
 /** Backwards-compatible alias for the previous settings-section props type. */
 export type UsageStatsSectionProps = UsageStatsViewProps
 
 const RANGE_PRESETS = ['today', '1d', '7d', '14d', '30d'] as const
+
+/** Map a range preset to its dictionary key without a template-string cast. */
+function rangeLabelKey(preset: RangeSelection['preset']): CostTrackerKey {
+  switch (preset) {
+    case 'today': return 'rangeToday'
+    case '1d': return 'range1d'
+    case '7d': return 'range7d'
+    case '14d': return 'range14d'
+    case '30d': return 'range30d'
+    case 'custom': return 'rangeCustom'
+  }
+}
 const REFRESH_OPTIONS = [0, 5_000, 10_000, 30_000, 60_000] as const
 const DEFAULT_REFRESH_MS = 30_000
 /** Request-log page size: 15 rows is enough for a glance (CC Switch density). */
@@ -76,7 +87,7 @@ export function UsageStatsView({ controller, useSnapshot, t }: UsageStatsViewPro
   const [offset, setOffset] = useState(0)
   const [now, setNow] = useState(() => Date.now())
 
-  const state = useSnapshot?.(s => s) as UsageStatsState | undefined
+  const state = useSnapshot(s => s) as UsageStatsState
   const filter = useMemo<CostFilterWire>(() => {
     const { fromMs, toMs } = resolveRange(range, now)
     return {
@@ -88,7 +99,6 @@ export function UsageStatsView({ controller, useSnapshot, t }: UsageStatsViewPro
   }, [range, now, provider, model])
 
   const load = useCallback(() => {
-    if (controller === undefined) return
     void controller.load(filter, offset)
   }, [controller, filter, offset])
 
@@ -97,17 +107,13 @@ export function UsageStatsView({ controller, useSnapshot, t }: UsageStatsViewPro
   // Auto refresh (30s default; 0 = off). `now` re-resolves live ranges each
   // tick so "today" keeps its window moving.
   useEffect(() => {
-    if (refreshMs <= 0 || controller === undefined) return
+    if (refreshMs <= 0) return
     const timer = setInterval(() => { setNow(Date.now()) }, refreshMs)
     return () => clearInterval(timer)
-  }, [refreshMs, controller])
+  }, [refreshMs])
 
   // Refresh immediately after the range end moves.
   useEffect(() => { load() }, [now, load])
-
-  if (controller === undefined || useSnapshot === undefined || t === undefined || state === undefined) {
-    return null
-  }
 
   const overview = state.overview
   const hitPercent = overview?.cacheHitRate === undefined || overview.cacheHitRate === null
@@ -161,7 +167,7 @@ export function UsageStatsView({ controller, useSnapshot, t }: UsageStatsViewPro
             }}
           >
             {RANGE_PRESETS.map(preset => (
-              <option key={preset} value={preset}>{t(`range${preset === 'today' ? 'Today' : preset.toUpperCase()}`)}</option>
+              <option key={preset} value={preset}>{t(rangeLabelKey(preset))}</option>
             ))}
           </select>
           <button type="button" className={css.refreshButton} onClick={load}>{t('refresh')}</button>
@@ -218,7 +224,7 @@ export function UsageStatsView({ controller, useSnapshot, t }: UsageStatsViewPro
       <div className={css.card}>
         <div className={css.cardHeader}>
           <h3 className={css.cardTitle}>{t('trends')}</h3>
-          <span className={css.cardMeta}>{t(`range${range.preset === 'today' ? 'Today' : range.preset.toUpperCase()}`)}</span>
+          <span className={css.cardMeta}>{t(rangeLabelKey(range.preset))}</span>
         </div>
         {state.status === 'loading' && state.trends.length === 0
           ? <div className={css.loading}>{t('loading')}</div>

@@ -11,10 +11,11 @@ import {
   emptyModelPrice, formFromWire, priceSectionFromForm, type CostPriceForm, type CostModelPriceForm,
 } from './usage-stats-model.ts'
 import { loadPriceConfig, resetPriceConfig, savePriceConfig, type PriceConfigViewWire } from './store.ts'
+import type { CostTrackerKey } from './locales.ts'
 import css from './UsageStats.module.css'
 
 interface PricingEditorProps {
-  t: (key: string, params?: Record<string, unknown>) => string
+  t: (key: CostTrackerKey, params?: Record<string, unknown>) => string
 }
 
 type EditorStatus =
@@ -204,7 +205,7 @@ export function PricingEditor({ t }: PricingEditorProps) {
 interface PriceFieldsProps {
   row: CostModelPriceForm
   onChange: (patch: Partial<CostModelPriceForm>) => void
-  t: (key: string, params?: Record<string, unknown>) => string
+  t: (key: CostTrackerKey, params?: Record<string, unknown>) => string
   disabled?: boolean
 }
 

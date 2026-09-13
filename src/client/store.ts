@@ -5,8 +5,8 @@
  * @module @visol-456/dsh-cost-tracker/client/store
  */
 
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 
 /** Route prefix of the node bridge (same-origin with the web shell). */
 export const BRIDGE_PATH = '/cost-tracker'

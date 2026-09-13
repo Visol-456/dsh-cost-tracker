@@ -16,7 +16,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { URL } from 'node:url'
 import {
   SettingsConflictError,
-  settingsNamespace,
   type SettingsDescriptor,
   type SettingsNamespace,
 } from '@deepseek-ai/dsh-settings'
@@ -29,7 +28,7 @@ import type { CostFilter } from './types.ts'
 export const BRIDGE_PATH = '/cost-tracker'
 
 /** Settings namespace carrying the GUI-edited price table. */
-export const COST_TRACKER_SETTINGS_NAMESPACE = settingsNamespace('cost-tracker')
+export const COST_TRACKER_SETTINGS_NAMESPACE = 'cost-tracker' as SettingsNamespace
 
 /** Maximum request body the bridge accepts (the price table is small). */
 const MAX_BODY_BYTES = 1024 * 1024

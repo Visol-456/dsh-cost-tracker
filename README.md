@@ -17,6 +17,8 @@ token 用量（输入 / 输出 / 缓存命中 / 缓存未命中）与价格表�
   底部 tabs（请求日志 / Provider 统计 / 模型统计）+ 价格表编辑器。
 
 > DeepSeek Harness `dsh-plugin` 生态的社区插件，不属于官方仓库。
+>
+> 兼容 DeepSeek Harness **0.1.5-rc.1** 波浪：`peerDependencies` / `devDependencies` 已对齐 `^0.1.5-rc.1`，源码适配了 0.1.5 的 settings seam（`SettingsProvider.installSection`）、client store / slot hooks 与 assistant stream TTFT。
 
 ## 致谢 / 设计参考
 

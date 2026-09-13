@@ -24,9 +24,8 @@ import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
-import type { TokenUsage } from '@deepseek-ai/dsh-llm'
+import { assistantStreamFirstTokenTime, type TokenUsage } from '@deepseek-ai/dsh-llm'
 // Type-only: pulls the `ctx.webServer` Context merge into this program.
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import {
@@ -93,7 +92,7 @@ export const PriceSection = z.object({
 }) as unknown as z<PriceTable>
 
 /** Per-step timing state, keyed `${turn}:${step}` per session. */
-type StepTimings = Map<string, { start?: number; firstChunk?: number }>
+type StepTimings = Map<string, { start?: number }>
 
 /** Non-serializable hooks that make timing deterministic in tests. */
 export interface CostTrackerInternals {
@@ -140,27 +139,17 @@ export function apply(ctx: Context, config: Config, internals: CostTrackerIntern
       timingsFor(session.id).set(stepKey(event.data.turn, event.data.step), { start: event.time })
       return
     }
-    if (event.type === 'assistant/chunk') {
-      const chunk = event.data.chunk
-      if (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta' || chunk.type === 'tool-call-delta') {
-        const timings = timingsFor(session.id)
-        const key = stepKey(event.data.turn, event.data.step)
-        const entry = timings.get(key) ?? { start: undefined }
-        if (entry.firstChunk === undefined) entry.firstChunk = event.time
-        timings.set(key, entry)
-      }
-      return
-    }
     if (event.type === 'step/end') {
       timingsFor(session.id).delete(stepKey(event.data.turn, event.data.step))
       return
     }
     if (event.type === 'assistant/message') {
-      const { turn, step, message, usage } = event.data
+      const { turn, step, message, usage, stream } = event.data
       const timing = timingsFor(session.id).get(stepKey(turn, step))
       timingsFor(session.id).delete(stepKey(turn, step))
       if (usage === undefined) return
-      void recordCall(session, turn, step, message.source.provider, message.source.model, usage, event.time, timing)
+      const firstTokenTime = assistantStreamFirstTokenTime(stream)
+      void recordCall(session, turn, step, message.source.provider, message.source.model, usage, event.time, timing, firstTokenTime)
       return
     }
   }
@@ -173,11 +162,12 @@ export function apply(ctx: Context, config: Config, internals: CostTrackerIntern
     model: string,
     usage: TokenUsage,
     completedAt: number,
-    timing: { start?: number; firstChunk?: number } | undefined,
+    timing: { start?: number } | undefined,
+    firstTokenTime: number | undefined,
   ): Promise<void> {
     const requestedAt = timing?.start ?? completedAt
-    const ttftMs = timing?.start !== undefined && timing.firstChunk !== undefined
-      ? Math.max(0, timing.firstChunk - timing.start)
+    const ttftMs = timing?.start !== undefined && firstTokenTime !== undefined
+      ? Math.max(0, firstTokenTime - timing.start)
       : undefined
     const price: ModelPrice = priceFor(prices, model, completedAt)
     const breakdown = computeCost(
@@ -231,16 +221,21 @@ export function apply(ctx: Context, config: Config, internals: CostTrackerIntern
     }
   }, { global: true })
 
-  // Settings seam for the price table. The base layer is a *detached* clone:
-  // DEFAULT_PRICE_TABLE / resolvePriceTable() are deep-frozen, and the
-  // settings provider's schema coercion writes into the merged base layer —
-  // a frozen base makes register() throw ("Cannot assign to read only
-  // property"), the namespace never registers, and the bridge reports the
-  // price editor unavailable. structuredClone yields a writable plain copy.
-  installSettingsSection(ctx, COST_TRACKER_SETTINGS_NAMESPACE, PriceSection, structuredClone(basePrices), {
-    setSource: (current) => { pricesSource = current },
-    onChange: () => { rebuild(pricesSource()) },
-    validate: (value) => { resolvePriceTable(value) },
+  // Settings seam for the price table. 0.1.5 moved the optional-consumer
+  // helper from the package root onto the SettingsProvider service as
+  // `installSection(owner, ns, schema, entry, hooks)`. The base layer is a
+  // *detached* clone: DEFAULT_PRICE_TABLE / resolvePriceTable() are
+  // deep-frozen, and the settings provider's schema coercion writes into the
+  // merged base layer — a frozen base makes register() throw ("Cannot assign
+  // to read only property"), the namespace never registers, and the bridge
+  // reports the price editor unavailable. structuredClone yields a writable
+  // plain copy.
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, COST_TRACKER_SETTINGS_NAMESPACE, PriceSection, structuredClone(basePrices), {
+      setSource: (current) => { pricesSource = current },
+      onChange: () => { rebuild(pricesSource()) },
+      validate: (value) => { resolvePriceTable(value) },
+    })
   })
 
   // Browser data bridge, only when a web server is mounted.

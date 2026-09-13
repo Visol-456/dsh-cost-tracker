@@ -11,10 +11,12 @@ import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LlmRuntime, { createUserMessage, LlmAdapter } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjection from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as costTracker from '../src/index.ts'
 import { CostStore, RECORDS_FILE } from '../src/store.ts'
+import { DEFAULT_PRICE_TABLE, priceFor } from '../src/pricing.ts'
 
 let root: string | undefined
 let context: Context | undefined
@@ -58,6 +60,7 @@ async function loadYaml(buildLines: (costsDir: string) => string[]): Promise<Con
   const modules = new Map<string, unknown>([
     ['@deepseek-ai/dsh-llm', LlmRuntime],
     ['@deepseek-ai/dsh-session', SessionStore],
+    ['@deepseek-ai/dsh-session-projection', SessionProjection],
     ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
     ['@deepseek-ai/dsh-tools', ToolRuntime],
     ['@deepseek-ai/dsh-agent', AgentRegistry],
@@ -86,6 +89,7 @@ describe('real Loader composition', () => {
     const loaded = await loadYaml((costsDir) => [
       "- name: '@deepseek-ai/dsh-llm'",
       "- name: '@deepseek-ai/dsh-session'",
+      "- name: '@deepseek-ai/dsh-session-projection'",
       "- name: '@deepseek-ai/dsh-system-prompt'",
       "- name: '@deepseek-ai/dsh-tools'",
       "- name: '@deepseek-ai/dsh-agent'",
@@ -102,7 +106,7 @@ describe('real Loader composition', () => {
 
     const adapter = new UsageAdapter()
     loaded.llm.registerAdapter(['deepseek'], adapter)
-    const agent = loaded.agentLoop.create(SessionId('loader-costs'), {
+    const agent = await loaded.agentLoop.create(SessionId('loader-costs'), {
       provider: 'deepseek',
       model: 'deepseek-v4-flash',
     })
@@ -110,7 +114,7 @@ describe('real Loader composition', () => {
     await agent.whenIdle()
 
     expect(adapter.requests).toEqual(['deepseek-v4-flash'])
-    const assistant = agent.session.events.find(event => event.type === 'assistant/message')
+    const assistant = agent.session.snapshotEvents().find(event => event.type === 'assistant/message')
     expect(assistant).toMatchObject({
       data: {
         message: { source: { provider: 'deepseek', model: 'deepseek-v4-flash' } },
@@ -144,18 +148,25 @@ describe('real Loader composition', () => {
       cacheReadTokens: 2_000,
       version: 1,
     })
+    // Resolve the same peak/off-peak price the tracker used, from the
+    // recorded completion time, so this assertion is not wall-clock dependent.
+    const price = priceFor(DEFAULT_PRICE_TABLE, 'deepseek-v4-flash', record.completedAt as number)
+    const expectedInput = 1_000 / 1_000_000 * price.inputPerMillion
+    const expectedCacheHit = 2_000 / 1_000_000 * price.cacheHitPerMillion
+    const expectedOutput = 250 / 1_000_000 * price.outputPerMillion
+    const expectedTotal = expectedInput + expectedCacheHit + expectedOutput
     // Costs are floats; compare with tolerance.
-    expect(record.inputCost as number).toBeCloseTo(1_000 / 1_000_000 * 1.5, 12)        // ¥1.5/M uncached (off-peak)
-    expect(record.cacheHitCost as number).toBeCloseTo(2_000 / 1_000_000 * 0.05, 12)    // ¥0.05/M cached (off-peak)
-    expect(record.outputCost as number).toBeCloseTo(250 / 1_000_000 * 4.5, 12)         // ¥4.5/M output (off-peak)
-    expect(record.totalCost as number).toBeCloseTo((1_000 * 1.5 + 2_000 * 0.05 + 250 * 4.5) / 1_000_000, 12)
+    expect(record.inputCost as number).toBeCloseTo(expectedInput, 12)
+    expect(record.cacheHitCost as number).toBeCloseTo(expectedCacheHit, 12)
+    expect(record.outputCost as number).toBeCloseTo(expectedOutput, 12)
+    expect(record.totalCost as number).toBeCloseTo(expectedTotal, 12)
 
     // A fresh store over the same directory serves the session summary.
     const store = new CostStore(costsDir!)
     await store.init()
     const summary = store.sessionSummary('loader-costs')
     expect(summary.requests).toBe(1)
-    expect(summary.totalCost).toBeCloseTo((1_000 * 1.5 + 2_000 * 0.05 + 250 * 4.5) / 1_000_000, 12)
+    expect(summary.totalCost).toBeCloseTo(expectedTotal, 12)
     expect(summary.cacheHitRate).toBeCloseTo(2_000 / 3_000, 10)
     expect(summary.latest?.ttftMs).toBeGreaterThanOrEqual(0)
   })
@@ -164,6 +175,7 @@ describe('real Loader composition', () => {
     const loaded = await loadYaml((costsDir) => [
       "- name: '@deepseek-ai/dsh-llm'",
       "- name: '@deepseek-ai/dsh-session'",
+      "- name: '@deepseek-ai/dsh-session-projection'",
       "- name: '@deepseek-ai/dsh-system-prompt'",
       "- name: '@deepseek-ai/dsh-tools'",
       "- name: '@deepseek-ai/dsh-agent'",
@@ -174,7 +186,7 @@ describe('real Loader composition', () => {
     ])
     const adapter = new UsageAdapter()
     loaded.llm.registerAdapter(['deepseek'], adapter)
-    const agent = loaded.agentLoop.create(SessionId('loader-no-web'), {
+    const agent = await loaded.agentLoop.create(SessionId('loader-no-web'), {
       provider: 'deepseek',
       model: 'deepseek-v4-flash',
     })
@@ -190,6 +202,7 @@ describe('real Loader composition', () => {
     await expect(loadYaml(() => [
       "- name: '@deepseek-ai/dsh-llm'",
       "- name: '@deepseek-ai/dsh-session'",
+      "- name: '@deepseek-ai/dsh-session-projection'",
       "- name: '@deepseek-ai/dsh-system-prompt'",
       "- name: '@deepseek-ai/dsh-tools'",
       "- name: '@deepseek-ai/dsh-agent'",

@@ -14,6 +14,7 @@
 
 import { useMemo, useState } from 'react'
 import type { CostTrendPointWire } from './store.ts'
+import type { CostTrackerKey } from './locales.ts'
 import css from './UsageStats.module.css'
 
 /** Series palette (CC Switch colors). */
@@ -60,7 +61,7 @@ const TOOLTIP_HEIGHT = 118
 
 interface ChartProps {
   points: CostTrendPointWire[]
-  t: (key: string, params?: Record<string, unknown>) => string
+  t: (key: CostTrackerKey, params?: Record<string, unknown>) => string
 }
 
 /** One point's value for a series key. */
